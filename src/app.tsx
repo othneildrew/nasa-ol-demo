@@ -1,7 +1,11 @@
-import { MapView } from './features/open-layers/map-view.tsx';
+import MapView from './components/map-view.tsx';
 
 function App() {
-  return <MapView />;
+  return (
+    <main className="relative w-dvw h-dvh">
+      <MapView />
+    </main>
+  );
 }
 
 export default App;

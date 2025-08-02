@@ -1,24 +1,11 @@
 import { type RefObject, useEffect, useRef } from 'react';
 import { Map, View } from 'ol';
-import TileLayer from 'ol/layer/Tile';
-import OSM from 'ol/source/OSM';
+import { ScaleLine, defaults as defaultControls } from 'ol/control';
 
 export interface UseOpenLayersProps {
   containerRef: RefObject<HTMLDivElement | null>;
   options?: Partial<ConstructorParameters<typeof Map>[0]>;
 }
-
-export const DEFAULT_MAP_OPTIONS: Partial<ConstructorParameters<typeof Map>[0]> = {
-  layers: [
-    new TileLayer({
-      source: new OSM(),
-    }),
-  ],
-  view: new View({
-    center: [0, 0],
-    zoom: 14,
-  }),
-};
 
 export const useOpenLayersMap = ({ containerRef, options }: UseOpenLayersProps) => {
   const mapRef = useRef<Map | null>(null);
@@ -30,16 +17,29 @@ export const useOpenLayersMap = ({ containerRef, options }: UseOpenLayersProps) 
 
     mapRef.current = new Map({
       target: containerRef.current,
-      ...DEFAULT_MAP_OPTIONS,
+      controls: defaultControls().extend([
+        new ScaleLine({
+          units: 'degrees',
+        }),
+      ]),
+      view: new View({
+        projection: 'EPSG:4326',
+        center: [-64.76276335205254, 17.74294455671927], // approx: USVI
+        zoom: 4,
+        minZoom: 0,
+        maxZoom: 22,
+        extent: [-180, -90, 180, 90],
+        smoothExtentConstraint: true,
+      }),
       ...options,
     });
 
     return () => {
-      //
       mapRef.current?.setTarget(undefined);
+      mapRef.current?.dispose?.();
       mapRef.current = null;
     };
   }, [containerRef, options]);
 
-  return mapRef.current;
+  return mapRef;
 };
