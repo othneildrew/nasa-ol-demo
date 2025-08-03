@@ -1,18 +1,20 @@
 import 'ol/ol.css';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AppBar } from './app-bar.tsx';
 import { SimpleTextLoader } from './simple-text-loader.tsx';
+import { useOpenLayersMap } from '../hooks/use-open-layers-map.tsx';
 import {
   createWMTSTileLayer,
   fetchWMTSCapabilities,
+  formateStringFromDate,
   getLayerDataFromCapabilities,
 } from '../utils.ts';
-import { useOpenLayersMap } from '../hooks/use-open-layers-map.tsx';
 
 export const MapView = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>(() => formateStringFromDate(new Date()));
   const [availableLayers, setAvailableLayers] = useState<string[]>([]);
   const [selectedLayer, setSelectedLayer] = useState('MODIS_Terra_CorrectedReflectance_TrueColor');
 
@@ -34,7 +36,7 @@ export const MapView = () => {
         const { layerIds } = getLayerDataFromCapabilities(capabilities);
 
         // Create and set the map layer
-        const layer = await createWMTSTileLayer(selectedLayer);
+        const layer = await createWMTSTileLayer(selectedLayer, selectedDate);
 
         if (layer) {
           map.addLayer(layer);
@@ -63,34 +65,37 @@ export const MapView = () => {
       // Prevent old data from loading if unmounting
       shouldSetData = false;
     };
-  }, [ol, selectedLayer]);
+  }, [ol, selectedDate, selectedLayer]);
 
-  const changeLayer = async (newLayerName: string) => {
-    if (!ol.current) return;
+  const changeLayer = useCallback(
+    async (newLayerName: string) => {
+      if (!ol.current) return;
 
-    const map = ol.current;
+      const map = ol.current;
 
-    try {
-      setLoading(true);
-      setError(null);
+      try {
+        setLoading(true);
+        setError(null);
 
-      // Remove existing layers and add the new map layer
-      map.getLayers().clear();
+        // Remove existing layers and add the new map layer
+        map.getLayers().clear();
 
-      const newMapLayer = await createWMTSTileLayer(newLayerName);
+        const newMapLayer = await createWMTSTileLayer(newLayerName, selectedDate);
 
-      if (newMapLayer) {
-        map.addLayer(newMapLayer);
+        if (newMapLayer) {
+          map.addLayer(newMapLayer);
+        }
+
+        setSelectedLayer(newLayerName);
+        setLoading(false);
+      } catch (err) {
+        console.error('Layer change error:', err);
+        setError(err.message);
+        setLoading(false);
       }
-
-      setSelectedLayer(newLayerName);
-      setLoading(false);
-    } catch (err) {
-      console.error('Layer change error:', err);
-      setError(err.message);
-      setLoading(false);
-    }
-  };
+    },
+    [ol, selectedDate]
+  );
 
   return (
     <div className="relative w-full h-[100%] flex flex-col bg-black">
@@ -99,6 +104,8 @@ export const MapView = () => {
         isLoading={loading}
         availableLayers={availableLayers}
         handleChangeLayer={changeLayer}
+        selectedDate={selectedDate}
+        handleSelectedDateChange={setSelectedDate}
         error={error}
       />
 

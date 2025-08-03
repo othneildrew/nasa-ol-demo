@@ -13,3 +13,15 @@ type MatrixSet = typeof PREFERRED_MATRIX_SETS[number];
 export const ALLOWED_WMTS_MAP_LAYERS = [
   'MODIS_Terra_CorrectedReflectance_TrueColor',
 ];
+
+export const FIXED_MAP_ZOOM_RESOLUTIONS = [
+  0.5625,
+  0.28125,
+  0.140625,
+  0.0703125,
+  0.03515625,
+  0.017578125,
+  0.0087890625,
+  0.00439453125,
+  0.002197265625,
+];

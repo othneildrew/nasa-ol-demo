@@ -37,7 +37,7 @@ export const getLayerDataFromCapabilities = (
 ): { layers: []; layerIds: string[] } => {
   const layers = capabilities?.Contents?.Layer || [];
 
-  console.log('layersssss:::', capabilities);
+  console.log('capabilities:::', capabilities);
   const layerIds = layers.map((l: WMTSLayer) => l.Identifier).sort();
   return { layers, layerIds };
 };
@@ -54,7 +54,7 @@ export const findCompatibleMatrixSet = (availableMatrixSets: string[]): string |
   return availableMatrixSets[0] || null;
 };
 
-export const createWMTSTileLayer = async (layerName: string): Promise<TileLayer<WMTS> | null> => {
+export const createWMTSTileLayer = async (layerName: string, dateString = '2020-10-26'): Promise<TileLayer<WMTS> | null> => {
   const capabilities = await fetchWMTSCapabilities();
   const { layers, layerIds } = getLayerDataFromCapabilities(capabilities);
 
@@ -94,7 +94,21 @@ export const createWMTSTileLayer = async (layerName: string): Promise<TileLayer<
     return null;
   }
 
+  console.log('options', options);
+
+  // Update the urls dynamically to reflected user selected date
+  options.urls = options.urls?.map(url => {
+    return url.replace('{Time}', dateString);
+  });
+
   return new TileLayer({
     source: new WMTS(options),
   });
 };
+
+/**
+ * Returns formatted date string as `YYYY-MM-DD`.
+ * Generally speaking, it is better to use the Intl.DateTimeFormat, but for small
+ * demo, string operations are faster since we don't need intl support.
+ */
+export const formateStringFromDate = (date: Date): string => date.toISOString().split('T')[0];
