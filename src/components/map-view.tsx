@@ -9,6 +9,11 @@ import {
   formateStringFromDate,
   getLayerDataFromCapabilities,
 } from '../utils.ts';
+import { GeoJSON } from 'ol/format';
+import { type PreloadedEvent, usePreloadedEvents } from '../hooks/use-preloaded-events.tsx';
+import VectorSource from 'ol/source/Vector';
+import VectorLayer from 'ol/layer/Vector';
+import { EventsModal } from './events-modal.tsx';
 
 export const MapView = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -17,6 +22,11 @@ export const MapView = () => {
   const [selectedDate, setSelectedDate] = useState<string>(() => formateStringFromDate(new Date()));
   const [availableLayers, setAvailableLayers] = useState<string[]>([]);
   const [selectedLayer, setSelectedLayer] = useState('MODIS_Terra_CorrectedReflectance_TrueColor');
+  const [loadedEvents, setLoadedEvents] = usePreloadedEvents();
+  const [showEventsModal, setShowEventsModal] = useState(false);
+
+  const vectorSource = useRef(new VectorSource());
+  const vectorLayer = useRef(new VectorLayer({ source: vectorSource.current }));
 
   const ol = useOpenLayersMap({ containerRef });
 
@@ -97,6 +107,31 @@ export const MapView = () => {
     [ol, selectedDate]
   );
 
+  const handleLoadEvent = useCallback(
+    (event: PreloadedEvent) => {
+      if (!event?.geojson || !vectorSource.current || !ol?.current) return;
+
+      const features = new GeoJSON().readFeatures(event.geojson, {
+        featureProjection: 'EPSG:4326',
+      });
+
+      vectorSource.current.clear();
+      vectorSource.current.addFeatures(features);
+
+      const extent = vectorSource.current.getExtent();
+
+      // Move the map to show the selected event data
+      ol.current.getView().fit(extent, { padding: [0, 0, 0, 0] });
+
+      // Ensure vectorLayer is added only once
+      const layers = ol.current.getLayers().getArray();
+      if (!layers.includes(vectorLayer.current)) {
+        ol.current.addLayer(vectorLayer.current);
+      }
+    },
+    [vectorSource, ol, vectorLayer]
+  );
+
   return (
     <div className="relative w-full h-[100%] flex flex-col bg-black">
       <AppBar
@@ -107,8 +142,13 @@ export const MapView = () => {
         selectedDate={selectedDate}
         handleSelectedDateChange={setSelectedDate}
         error={error}
+        onShowEvents={() => setShowEventsModal(true)}
       />
-
+      <EventsModal
+        open={showEventsModal}
+        onClose={() => setShowEventsModal(false)}
+        onLoadEvent={handleLoadEvent}
+      />
       <div ref={containerRef} className="relative flex-1">
         <SimpleTextLoader isLoading={loading} />
       </div>
