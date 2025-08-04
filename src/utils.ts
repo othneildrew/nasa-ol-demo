@@ -54,7 +54,10 @@ export const findCompatibleMatrixSet = (availableMatrixSets: string[]): string |
   return availableMatrixSets[0] || null;
 };
 
-export const createWMTSTileLayer = async (layerName: string, dateString = '2020-10-26'): Promise<TileLayer<WMTS> | null> => {
+export const createWMTSTileLayer = async (
+  layerName: string,
+  dateString = '2020-10-26'
+): Promise<TileLayer<WMTS> | null> => {
   const capabilities = await fetchWMTSCapabilities();
   const { layers, layerIds } = getLayerDataFromCapabilities(capabilities);
 
@@ -96,14 +99,24 @@ export const createWMTSTileLayer = async (layerName: string, dateString = '2020-
 
   console.log('options', options);
 
-  // Update the urls dynamically to reflected user selected date
-  options.urls = options.urls?.map(url => {
-    return url.replace('{Time}', dateString);
-  });
-
-  return new TileLayer({
+  const layer = new TileLayer({
     source: new WMTS(options),
   });
+
+  const source = layer.getSource();
+  const urls = source?.getUrls();
+
+  // Update the urls dynamically to reflected user selected date
+  if (urls) {
+    const updatedUrls = urls.map((url) => {
+      return url.replace('{Time}', dateString);
+    });
+
+    source?.setUrls(updatedUrls);
+    source?.refresh();
+  }
+
+  return layer;
 };
 
 /**
