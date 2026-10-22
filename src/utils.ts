@@ -8,28 +8,35 @@ interface WMTSLayer {
   TileMatrixSetLink?: Array<{ TileMatrixSet: string }>;
 }
 
-export const fetchWMTSCapabilities = async (): Promise<WMTSCapabilities | null> => {
+let capabilitiesPromise: Promise<WMTSCapabilities | null> | null = null;
+
+const loadWMTSCapabilities = async (): Promise<WMTSCapabilities | null> => {
   try {
-    let xml = sessionStorage.getItem('capabilities');
+    const res = await fetch(NASA_GIBS_WMTS_CAPABILITIES_URL);
 
-    if (!xml) {
-      const res = await fetch(NASA_GIBS_WMTS_CAPABILITIES_URL);
-      xml = await res.text();
-
-      if (!res.ok) {
-        console.error(
-          `Failed to fetch (status: ${res.status}) capabilities from ${NASA_GIBS_WMTS_CAPABILITIES_URL}`
-        );
-        return null;
-      }
-
-      sessionStorage.setItem('capabilities', xml);
+    if (!res.ok) {
+      console.error(
+        `Failed to fetch (status: ${res.status}) capabilities from ${NASA_GIBS_WMTS_CAPABILITIES_URL}`
+      );
+      return null;
     }
+
+    const xml = await res.text();
     return xml ? new WMTSCapabilities().read(xml) : null;
   } catch (err) {
     console.error('Error fetching WMTS capabilities', err);
     return null;
   }
+};
+
+export const fetchWMTSCapabilities = async (): Promise<WMTSCapabilities | null> => {
+  if (!capabilitiesPromise) {
+    capabilitiesPromise = loadWMTSCapabilities().then((capabilities) => {
+      if (!capabilities) capabilitiesPromise = null;
+      return capabilities;
+    });
+  }
+  return capabilitiesPromise;
 };
 
 export const getLayerDataFromCapabilities = (
@@ -108,7 +115,8 @@ export const createWMTSTileLayer = async (
 
   // Update the urls dynamically to reflected user selected date
   if (urls) {
-    const updatedUrls = urls.map((url) => {
+    const timeUrls = urls.filter((url) => url.includes('{Time}'));
+    const updatedUrls = (timeUrls.length ? timeUrls : urls).map((url) => {
       return url.replace('{Time}', dateString);
     });
 
@@ -124,4 +132,7 @@ export const createWMTSTileLayer = async (
  * Generally speaking, it is better to use the Intl.DateTimeFormat, but for small
  * demo, string operations are faster since we don't need intl support.
  */
-export const formateStringFromDate = (date: Date): string => date.toISOString().split('T')[0];
+export const formateStringFromDate = (date: Date): string => {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};

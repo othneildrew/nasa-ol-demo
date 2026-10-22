@@ -41,7 +41,7 @@ export const AppBar = ({
           <label className="flex justify-center flex-col gap-1 text-sm font-semibold text-white/55">
             Layer
             <select
-              className="w-[480px] rounded-lg border-none bg-white/5 px-3 h-[36px] text-sm/6 *:text-black"
+              className="w-[480px] rounded-lg border-none bg-white/5 px-3 h-[36px] text-sm/6 *:text-black *:bg-white"
               value={selectedLayer}
               onChange={(e) => handleChangeLayer(e.target.value)}
               disabled={isLoading}
